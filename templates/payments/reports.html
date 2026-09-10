@@ -1,0 +1,11 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Reports | FeeFlow{% endblock %}
+{% block page_heading %}Reports{% endblock %}
+
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Insights</span><h1>Collection reports</h1><p>Understand collection pace and the remaining fee balance.</p></div></div>
+<div class="report-grid"><section class="panel report-chart-panel"><div class="panel-heading"><div><span class="eyebrow">Overall position</span><h2>Collected vs pending</h2></div></div><div class="report-chart-wrap"><canvas id="reportChart"></canvas></div><div class="legend-row"><span><i class="legend-dot collected"></i>Collected <strong>{{ report_collected|floatformat:2 }}</strong></span><span><i class="legend-dot pending"></i>Pending <strong>{{ report_pending|floatformat:2 }}</strong></span></div></section><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Totals</span><h2>Month-wise collection</h2></div></div><div class="table-responsive"><table class="table premium-table mb-0"><thead><tr><th>Month</th><th class="text-end">Collected</th></tr></thead><tbody>{% for row in monthly_collections %}<tr><td>{{ row.label }}</td><td class="text-end amount-positive">{{ row.total|floatformat:2 }}</td></tr>{% empty %}<tr><td class="empty-state" colspan="2">No collection data yet.</td></tr>{% endfor %}</tbody></table></div></section></div>
+{{ report_collected|json_script:"report-collected" }}{{ report_pending|json_script:"report-pending" }}
+{% endblock %}
+{% block extra_js %}<script>document.addEventListener('DOMContentLoaded', () => { const canvas = document.getElementById('reportChart'); if (!canvas || !window.Chart) return; const collected = Number(JSON.parse(document.getElementById('report-collected').textContent)); const pending = Number(JSON.parse(document.getElementById('report-pending').textContent)); new Chart(canvas, { type: 'doughnut', data: { labels: ['Collected', 'Pending'], datasets: [{ data: [collected, pending], backgroundColor: ['#16a89a', '#e56968'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } } }); });</script>{% endblock %}

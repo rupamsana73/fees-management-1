@@ -1,0 +1,179 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Manage Students | FeeFlow{% endblock %}
+{% block page_heading %}Manage Students{% endblock %}
+
+{% block content %}
+<div class="page-intro">
+    <div>
+        <span class="eyebrow">Directory</span>
+        <h1>Manage students</h1>
+        <p>Keep student profiles and fee balances up to date.</p>
+    </div>
+    <button class="btn btn-primary action-button" type="button" data-bs-toggle="modal" data-bs-target="#addStudentModal">
+        <i class="bi bi-person-plus-fill"></i> Add student
+    </button>
+</div>
+<section class="panel">
+    <div class="table-toolbar">
+        <div class="search-box"><i class="bi bi-search"></i><input type="search" placeholder="Search students..." aria-label="Search students" data-table-search></div>
+        <span class="table-hint">Click a column to sort</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table premium-table align-middle mb-0" data-sort-table>
+            <thead>
+                <tr>
+                    <th data-sort-key="name">Name <i class="bi bi-chevron-expand sort-icon"></i></th>
+                    <th data-sort-key="student-id">Student ID <i class="bi bi-chevron-expand sort-icon"></i></th>
+                    <th data-sort-key="total">Total Fee <i class="bi bi-chevron-expand sort-icon"></i></th>
+                    <th data-sort-key="paid">Paid <i class="bi bi-chevron-expand sort-icon"></i></th>
+                    <th data-sort-key="pending">Pending <i class="bi bi-chevron-expand sort-icon"></i></th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                    <tr data-student-row>
+                        <td><strong>{{ student.name }}</strong><small class="d-block muted-text">{{ student.course|default:"No course specified" }}</small></td>
+                        <td>{{ student.student_id }}</td>
+                        <td data-sort-value="{{ student.total_fee }}">{{ student.total_fee|floatformat:2 }}</td>
+                        <td data-sort-value="{{ student.paid_total }}">{{ student.paid_total|floatformat:2 }}</td>
+                        <td data-sort-value="{{ student.pending_total }}">{% if student.pending_total > 0 %}<span class="status-badge status-danger">{{ student.pending_total|floatformat:2 }}</span>{% else %}<span class="status-badge status-success">Paid in full</span>{% endif %}</td>
+                        <td class="text-end text-nowrap">
+                            <a class="icon-button" href="{% url 'student-edit' student.pk %}" title="Edit student"><i class="bi bi-pencil-square"></i></a>
+                            <form class="d-inline" method="post" action="{% url 'student-delete' student.pk %}">{% csrf_token %}<button class="icon-button danger" type="submit" title="Delete student"><i class="bi bi-trash3"></i></button></form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td class="empty-state" colspan="6">No students found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content premium-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="eyebrow">Student onboarding</span>
+                    <h2 class="modal-title" id="addStudentModalLabel">Add student</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'student-add' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-grid">
+                        {% for field in add_form %}
+                            <div class="form-field {% if field.name in 'name email total_fee' %}wide-field{% endif %}">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <small class="field-error">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" type="submit">Create student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if show_credential_modal and created_student_credentials %}
+<div class="modal fade show" id="studentCredentialsModal" tabindex="-1" aria-modal="true" role="dialog" style="display:block; background: rgba(15, 23, 42, 0.52);">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content premium-modal">
+            <div class="modal-header">
+                <div>
+                    <span class="eyebrow">Credentials</span>
+                    <h2 class="modal-title">Student Created Successfully ✓</h2>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="document.getElementById('studentCredentialsModal').style.display='none';"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6"><div class="credential-box"><span>Student ID</span><strong id="student-id-value">{{ created_student_credentials.student_id }}</strong></div></div>
+                    <div class="col-md-6"><div class="credential-box"><span>Username</span><strong id="username-value">{{ created_student_credentials.username }}</strong></div></div>
+                    <div class="col-md-12"><div class="credential-box"><span>Temporary Password</span><div class="credential-secret"><strong id="password-value">{{ created_student_credentials.password }}</strong><button class="icon-button" type="button" data-password-toggle aria-label="Hide temporary password" aria-pressed="false" title="Hide temporary password"><i class="bi bi-eye-slash"></i></button></div></div></div>
+                    <div class="col-md-12"><div class="credential-box"><span>Email</span><strong id="email-value">{{ created_student_credentials.email }}</strong></div></div>
+                </div>
+            </div>
+            <div class="modal-footer flex-wrap justify-content-between">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" type="button" data-copy-credentials>Copy Credentials</button>
+                    <button class="btn btn-outline-secondary" type="button" data-copy-password>Copy Password</button>
+                    <span class="copy-feedback" data-copy-feedback role="status" aria-live="polite"></span>
+                </div>
+                <div class="d-flex gap-2">
+                    <form method="post" action="{% url 'student-resend-credentials' created_student_credentials.pk %}" data-resend-form>
+                        {% csrf_token %}
+                        <button class="btn btn-outline-primary" type="submit" data-resend-button>Send Email Again</button>
+                    </form>
+                    <button class="btn btn-light" type="button" onclick="document.getElementById('studentCredentialsModal').style.display='none';">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+    {% if open_add_modal %}<script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('addStudentModal')).show());</script>{% endif %}
+    {% if show_credential_modal and created_student_credentials %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('studentCredentialsModal');
+            if (modal) modal.classList.add('show');
+            const password = document.getElementById('password-value');
+            const passwordToggle = document.querySelector('[data-password-toggle]');
+            const feedback = document.querySelector('[data-copy-feedback]');
+            const setFeedback = (message) => {
+                if (!feedback) return;
+                feedback.textContent = message;
+                window.setTimeout(() => { feedback.textContent = ''; }, 2200);
+            };
+            passwordToggle?.addEventListener('click', () => {
+                const revealed = password.dataset.revealed !== 'true';
+                password.dataset.revealed = revealed ? 'true' : 'false';
+                password.style.filter = revealed ? 'none' : 'blur(5px)';
+                passwordToggle.setAttribute('aria-pressed', String(revealed));
+                passwordToggle.setAttribute('aria-label', revealed ? 'Hide temporary password' : 'Show temporary password');
+                passwordToggle.title = revealed ? 'Hide temporary password' : 'Show temporary password';
+                passwordToggle.innerHTML = revealed ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+            });
+            document.querySelector('[data-copy-credentials]')?.addEventListener('click', async (event) => {
+                const values = [
+                    `Student ID: ${document.getElementById('student-id-value').textContent.trim()}`,
+                    `Username: ${document.getElementById('username-value').textContent.trim()}`,
+                    `Temporary Password: ${password.textContent.trim()}`,
+                    `Email: ${document.getElementById('email-value').textContent.trim()}`,
+                ].join('\n');
+                await navigator.clipboard.writeText(values);
+                event.currentTarget.textContent = 'Copied';
+                setFeedback('Credentials copied');
+                window.setTimeout(() => { event.currentTarget.textContent = 'Copy Credentials'; }, 2200);
+            });
+            document.querySelector('[data-copy-password]')?.addEventListener('click', async (event) => {
+                await navigator.clipboard.writeText(password.textContent.trim());
+                event.currentTarget.textContent = 'Copied';
+                setFeedback('Password copied');
+                window.setTimeout(() => { event.currentTarget.textContent = 'Copy Password'; }, 2200);
+            });
+            document.querySelector('[data-resend-form]')?.addEventListener('submit', () => {
+                const button = document.querySelector('[data-resend-button]');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Sending...';
+                }
+            });
+        });
+    </script>
+    {% endif %}
+{% endblock %}

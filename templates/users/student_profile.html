@@ -1,0 +1,9 @@
+{% extends "student_base.html" %}
+
+{% block title %}My Profile | FeeFlow{% endblock %}
+{% block page_heading %}My profile{% endblock %}
+
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Account details</span><h1>My profile</h1><p>Your student information and account security.</p></div></div>
+<div class="profile-layout"><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Read-only information</span><h2>Student details</h2></div><span class="profile-large-avatar">{{ student.name|first|upper }}</span></div><dl class="details-list"><div><dt>Name</dt><dd>{{ student.name }}</dd></div><div><dt>Student ID</dt><dd>{{ student.student_id }}</dd></div><div><dt>Course</dt><dd>{{ student.course|default:"Not specified" }}</dd></div><div><dt>Total fee</dt><dd>{{ student.total_fee|floatformat:2 }}</dd></div></dl></section><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Security</span><h2>Change password</h2></div><i class="bi bi-lock-fill panel-heading-icon"></i></div><form method="post" action="{% url 'student-password-change' %}">{% csrf_token %}{% if form %}{{ form.non_field_errors }}{% for field in form %}<div class="form-field mb-3"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}{% if field.help_text %}<small class="muted-text password-help">{{ field.help_text|safe }}</small>{% endif %}</div>{% endfor %}<button class="btn btn-primary" type="submit"><i class="bi bi-key-fill"></i> Update password</button>{% else %}<p class="muted-text small">Use the form below to update your account password.</p><a class="btn btn-primary" href="{% url 'student-password-change' %}"><i class="bi bi-key-fill"></i> Change password</a>{% endif %}</form></section></div>
+{% endblock %}

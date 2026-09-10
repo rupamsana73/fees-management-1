@@ -1,0 +1,9 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Add Payment | FeeFlow{% endblock %}
+{% block page_heading %}Add Payment{% endblock %}
+
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Transactions</span><h1>Record a payment</h1><p>Apply a new collection to a student's fee balance.</p></div></div>
+<div class="row justify-content-center"><div class="col-12 col-xl-8"><section class="panel form-panel"><form method="post">{% csrf_token %}<div class="form-grid payment-grid"><div class="form-field wide-field"><label for="id_student">Student</label><select class="form-select" name="student" id="id_student" required><option value="">Select a student</option>{% for student in students %}<option value="{{ student.pk }}" data-pending="{{ student.pending_total }}" {% if form.student.value|stringformat:'s' == student.pk|stringformat:'s' %}selected{% endif %}>{{ student.name }} — {{ student.student_id }}</option>{% endfor %}</select>{% for error in form.student.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div><div class="balance-preview"><span>New pending balance</span><strong data-pending-preview>—</strong><small>Select a student and enter an amount</small></div>{% for field in form %}{% if field.name != 'student' %}<div class="form-field {% if field.name == 'remarks' %}wide-field{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>{% endif %}{% endfor %}</div><div class="form-actions"><a class="btn btn-light" href="{% url 'admin-dashboard' %}">Cancel</a><button class="btn btn-primary" type="submit"><i class="bi bi-check2"></i> Save payment</button></div></form></section></div></div>
+{% endblock %}

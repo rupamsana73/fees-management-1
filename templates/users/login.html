@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Access Portal | FeeFlow | Student Fee Management System{% endblock %}
+
+{% block content %}
+<div class="brand-shell">
+    <div class="brand-badge">
+        <span class="brand-icon">F</span>
+        <div>
+            <div class="brand-text">Fee<span class="brand-accent">Flow</span></div>
+            <div class="brand-subtitle">Student Fee Management System</div>
+        </div>
+    </div>
+</div>
+{% if mode == "portal" %}
+<div class="text-center portal-heading">
+    <p class="brand-subtitle mb-2">Secure entry</p>
+    <h1 class="h2 mb-2">Access Portal</h1>
+    <p class="text-muted">Choose how you access FeeFlow.</p>
+</div>
+<div class="row justify-content-center g-4 portal-options">
+    <div class="col-12 col-md-6">
+        <a class="card auth-choice h-100 text-decoration-none" href="{% url 'login' %}?role=student">
+            <div class="card-body p-4 p-lg-5">
+                <div class="choice-icon student-choice">&#128105;&#8205;&#127891;</div>
+                <h2 class="h4">Student Login</h2>
+                <p class="text-muted mb-0">Login with your student username and password.</p>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-md-6">
+        <a class="card auth-choice h-100 text-decoration-none" href="{% url 'login' %}?role=teacher">
+            <div class="card-body p-4 p-lg-5">
+                <div class="choice-icon teacher-choice">&#128104;&#8205;&#127979;</div>
+                <h2 class="h4">Teacher Login</h2>
+                <p class="text-muted mb-0">Access student management, payments and reports.</p>
+            </div>
+        </a>
+    </div>
+</div>
+{% else %}
+<div class="row justify-content-center">
+    <div class="col-12 col-md-6 col-lg-5">
+        <div class="card auth-card">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <p class="brand-subtitle mb-2">{{ mode|title }} access</p>
+                    <h1 class="h3 mb-0">{{ mode|title }} Login</h1>
+                    <small class="text-muted">Debasis Kamila</small>
+                </div>
+                {% if error %}
+                    <div class="alert alert-danger" role="alert">{{ error }}</div>
+                {% endif %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="role" value="{{ mode }}">
+                    <div class="mb-3">
+                        <label class="form-label" for="id_username">Username</label>
+                        {{ form.username }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="id_password">Password</label>
+                        {{ form.password }}
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Login as {{ mode|title }}</button>
+                </form>
+                {% if mode == "student" %}<p class="text-center text-muted small mt-3 mb-0">Don't have an account? Contact your teacher/admin.</p>{% endif %}
+                <a class="back-link d-block text-center mt-3" href="{% url 'login' %}">&larr; Back to login options</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

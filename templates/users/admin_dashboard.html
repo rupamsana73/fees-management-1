@@ -1,0 +1,45 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Dashboard | FeeFlow{% endblock %}
+{% block page_heading %}Overview{% endblock %}
+
+{% block content %}
+<div class="page-intro">
+    <div>
+        <span class="eyebrow">FeeFlow admin workspace</span>
+        <h1>Good to see you, {{ user.first_name|default:user.username }}.</h1>
+        <p>Debasis Kamila • Student Fee Management System</p>
+    </div>
+    <a class="btn btn-primary action-button" href="{% url 'payment-add' %}"><i class="bi bi-plus-lg"></i> Record payment</a>
+</div>
+
+<div class="stat-grid">
+    <article class="stat-card accent-indigo"><div class="stat-card-top"><span class="stat-icon"><i class="bi bi-people-fill"></i></span><span class="stat-kicker">Students</span></div><strong class="stat-number">{{ total_students }}</strong><span class="stat-label">Total enrolled students</span></article>
+    <article class="stat-card accent-teal"><div class="stat-card-top"><span class="stat-icon"><i class="bi bi-cash-stack"></i></span><span class="stat-kicker">Collected</span></div><strong class="stat-number">{{ total_collected|floatformat:2 }}</strong><span class="stat-label">Total collected to date</span></article>
+    <article class="stat-card accent-coral"><div class="stat-card-top"><span class="stat-icon"><i class="bi bi-hourglass-split"></i></span><span class="stat-kicker">Pending</span></div><strong class="stat-number">{{ total_pending|floatformat:2 }}</strong><span class="stat-label">Fees still outstanding</span></article>
+    <article class="stat-card accent-amber"><div class="stat-card-top"><span class="stat-icon"><i class="bi bi-calendar2-check-fill"></i></span><span class="stat-kicker">This month</span></div><strong class="stat-number">{{ this_month_collection|floatformat:2 }}</strong><span class="stat-label">Collected this month</span></article>
+</div>
+
+<div class="dashboard-grid">
+    <section class="panel chart-panel">
+        <div class="panel-heading"><div><span class="eyebrow">Performance</span><h2>Collection trend</h2></div><span class="panel-badge"><i class="bi bi-graph-up-arrow"></i> Monthly</span></div>
+        <div class="chart-wrap"><canvas id="collectionChart"></canvas></div>
+        {{ month_labels|json_script:"month-labels" }}
+        {{ month_values|json_script:"month-values" }}
+    </section>
+    <section class="panel quick-panel">
+        <div class="panel-heading"><div><span class="eyebrow">Shortcuts</span><h2>Keep momentum</h2></div></div>
+        <a class="quick-link" href="{% url 'student-list' %}"><span class="quick-icon violet"><i class="bi bi-person-plus-fill"></i></span><span><strong>Manage students</strong><small>Create and update student profiles</small></span><i class="bi bi-arrow-up-right"></i></a>
+        <a class="quick-link" href="{% url 'pending-fees' %}"><span class="quick-icon coral"><i class="bi bi-bell-fill"></i></span><span><strong>Review pending fees</strong><small>See who needs a follow-up</small></span><i class="bi bi-arrow-up-right"></i></a>
+        <a class="quick-link" href="{% url 'reports' %}"><span class="quick-icon teal"><i class="bi bi-file-earmark-bar-graph-fill"></i></span><span><strong>Open reports</strong><small>Review collection performance</small></span><i class="bi bi-arrow-up-right"></i></a>
+    </section>
+</div>
+
+<section class="panel recent-panel">
+    <div class="panel-heading"><div><span class="eyebrow">Activity</span><h2>Recent payments</h2></div><a class="text-link" href="{% url 'reports' %}">View reports <i class="bi bi-arrow-up-right"></i></a></div>
+    <div class="table-responsive"><table class="table premium-table mb-0"><thead><tr><th>Student</th><th>Month</th><th>Date</th><th>Remarks</th><th class="text-end">Amount</th></tr></thead><tbody>
+        {% for payment in recent_payments %}<tr><td><strong>{{ payment.student.name }}</strong><small class="d-block muted-text">{{ payment.student.student_id }}</small></td><td>{{ payment.month }}</td><td>{{ payment.payment_date|date:"M j, Y" }}</td><td class="muted-text">{{ payment.remarks|default:"—" }}</td><td class="text-end amount-positive">+ {{ payment.amount_paid|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-state">No payments recorded yet.</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% endblock %}

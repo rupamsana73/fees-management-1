@@ -1,0 +1,9 @@
+{% extends "admin_base.html" %}
+
+{% block title %}{{ title }} | FeeFlow{% endblock %}
+{% block page_heading %}Edit Student{% endblock %}
+
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Directory</span><h1>{{ title }}</h1><p>Update the student's profile and fee commitment.</p></div></div>
+<div class="row justify-content-center"><div class="col-12 col-xl-8"><section class="panel form-panel"><form method="post">{% csrf_token %}<div class="form-grid">{% for field in form %}<div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}</div>{% endfor %}</div><div class="form-actions"><a class="btn btn-light" href="{% url 'student-list' %}">Cancel</a><button class="btn btn-primary" type="submit">Save student</button></div></form></section></div></div>
+{% endblock %}
