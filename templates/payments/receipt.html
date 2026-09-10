@@ -1,0 +1,117 @@
+{% extends base_template %}
+
+{% block title %}Payment Receipt | FeeFlow{% endblock %}
+{% block page_heading %}Payment Receipt{% endblock %}
+
+{% block content %}
+<div class="page-intro">
+    <div>
+        <span class="eyebrow">Payment voucher</span>
+        <h1>Receipt</h1>
+        <p>Official payment record for {{ payment.student.name }}.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" href="{{ back_url }}">Back</a>
+        <a class="btn btn-primary" href="{% url 'payment-receipt-pdf' payment.pk %}">Download PDF</a>
+        <button class="btn btn-light" type="button" onclick="window.print()">Print</button>
+    </div>
+</div>
+
+<section class="panel receipt-panel" id="receipt-print-area">
+    <div class="receipt-header">
+        <div>
+            <div class="brand-mark brand-mark-sm"><span class="brand-icon"><i class="bi bi-wallet2"></i></span><span>Fee<span class="brand-accent">Flow</span></span></div>
+            <p class="receipt-subtitle">STUDENT FEE MANAGEMENT SYSTEM</p>
+            <p class="receipt-author">Debasis Kamila</p>
+        </div>
+        <div class="receipt-title-wrap">
+            <h2>PAYMENT RECEIPT</h2>
+        </div>
+    </div>
+
+    <div class="receipt-meta">
+        <div><span>Receipt Number:</span><strong>{{ receipt_number }}</strong></div>
+        <div><span>Payment Date:</span><strong>{{ payment.payment_date|date:"d F Y" }}</strong></div>
+    </div>
+
+    <div class="receipt-section">
+        <h3>Student Details</h3>
+        <div class="receipt-grid">
+            <div><span>Student Name</span><strong>{{ payment.student.name }}</strong></div>
+            <div><span>Student ID</span><strong>{{ payment.student.student_id }}</strong></div>
+            <div><span>Course</span><strong>{{ payment.student.course }}</strong></div>
+            <div><span>Email</span><strong>{{ payment.student.email }}</strong></div>
+            <div><span>Phone</span><strong>{{ payment.student.phone }}</strong></div>
+        </div>
+    </div>
+
+    <div class="receipt-section">
+        <h3>Payment Details</h3>
+        <div class="receipt-grid">
+            <div><span>Amount Paid</span><strong>₹{{ payment.amount_paid|floatformat:2 }}</strong></div>
+            <div><span>Payment Method</span><strong>{{ payment.payment_method|default:"Cash" }}</strong></div>
+            <div><span>Transaction ID</span><strong>{{ payment.transaction_id|default:"—" }}</strong></div>
+            <div class="wide-item"><span>Remarks</span><strong>{{ payment.remarks|default:"—" }}</strong></div>
+        </div>
+    </div>
+
+    <div class="receipt-section">
+        <h3>Fee Summary</h3>
+        <div class="receipt-grid">
+            <div><span>Total Fee</span><strong>₹{{ payment.student.total_fee|floatformat:2 }}</strong></div>
+            <div><span>Previously Paid</span><strong>₹{{ previous_paid|floatformat:2 }}</strong></div>
+            <div><span>This Payment</span><strong>₹{{ current_payment|floatformat:2 }}</strong></div>
+            <div><span>Total Paid</span><strong>₹{{ total_paid_after_payment|floatformat:2 }}</strong></div>
+            <div><span>Remaining Balance</span><strong>₹{{ pending|floatformat:2 }}</strong></div>
+            <div><span>Payment Status</span><strong>{{ payment_status }}</strong></div>
+        </div>
+    </div>
+
+    <div class="receipt-footer">
+        <p>Thank you.</p>
+        <p>Debasis Kamila</p>
+        <p>FeeFlow Student Fee Management System</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    @media print {
+        body { background: #fff !important; }
+        .admin-sidebar, .topbar, .sidebar-backdrop, .page-intro .btn, .alert, .btn, .receipt-panel .btn { display: none !important; }
+        .admin-main { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        .admin-content { padding: 0 !important; }
+        .receipt-panel {
+            box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important;
+            max-width: 100% !important; color: #111827 !important; background: white !important;
+        }
+        .receipt-header, .receipt-meta, .receipt-section, .receipt-footer { page-break-inside: avoid; }
+    }
+    .receipt-panel {
+        max-width: 960px; background: #fff; border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 22px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08); padding: 2rem; margin: 0 auto 2rem; color: #111827;
+    }
+    .receipt-header {
+        display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #dfe7f5;
+    }
+    .brand-mark-sm { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .receipt-subtitle, .receipt-author { margin: 0; color: #475569; }
+    .receipt-title-wrap h2 { margin: 0; font-size: 2rem; letter-spacing: 0.08em; }
+    .receipt-meta {
+        display: grid; grid-template-columns: repeat(2, minmax(200px, 1fr)); gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #dfe7f5; font-size: 0.95rem;
+    }
+    .receipt-meta div, .receipt-grid div { display: flex; flex-direction: column; gap: 0.3rem; }
+    .receipt-meta span, .receipt-grid span { color: #475569; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .receipt-section { padding-top: 1.25rem; }
+    .receipt-section h3 { margin: 0 0 0.8rem; font-size: 1.05rem; letter-spacing: 0.04em; text-transform: uppercase; color: #312e81; }
+    .receipt-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 1rem 1.5rem; }
+    .wide-item { grid-column: 1 / -1; }
+    .receipt-footer { border-top: 1px solid #dfe7f5; padding-top: 1.25rem; text-align: center; color: #334155; }
+    .receipt-footer p { margin: 0.2rem 0; }
+    @media (max-width: 768px) {
+        .receipt-header, .receipt-meta, .receipt-grid { grid-template-columns: 1fr; display: grid; }
+        .receipt-panel { padding: 1.25rem; }
+        .receipt-title-wrap h2 { font-size: 1.5rem; }
+    }
+</style>
+{% endblock %}

@@ -4,8 +4,328 @@
 {% block page_heading %}Reports{% endblock %}
 
 {% block content %}
-<div class="page-intro"><div><span class="eyebrow">Insights</span><h1>Collection reports</h1><p>Understand collection pace and the remaining fee balance.</p></div></div>
-<div class="report-grid"><section class="panel report-chart-panel"><div class="panel-heading"><div><span class="eyebrow">Overall position</span><h2>Collected vs pending</h2></div></div><div class="report-chart-wrap"><canvas id="reportChart"></canvas></div><div class="legend-row"><span><i class="legend-dot collected"></i>Collected <strong>{{ report_collected|floatformat:2 }}</strong></span><span><i class="legend-dot pending"></i>Pending <strong>{{ report_pending|floatformat:2 }}</strong></span></div></section><section class="panel"><div class="panel-heading"><div><span class="eyebrow">Totals</span><h2>Month-wise collection</h2></div></div><div class="table-responsive"><table class="table premium-table mb-0"><thead><tr><th>Month</th><th class="text-end">Collected</th></tr></thead><tbody>{% for row in monthly_collections %}<tr><td>{{ row.label }}</td><td class="text-end amount-positive">{{ row.total|floatformat:2 }}</td></tr>{% empty %}<tr><td class="empty-state" colspan="2">No collection data yet.</td></tr>{% endfor %}</tbody></table></div></section></div>
-{{ report_collected|json_script:"report-collected" }}{{ report_pending|json_script:"report-pending" }}
+<div class="page-intro">
+	<div>
+		<span class="eyebrow">Insights</span>
+		<h1>FeeFlow Financial Reports</h1>
+		<p>Monitor fees, collections, and student payment progress across the entire institute.</p>
+	</div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4 report-actions">
+	<a class="btn btn-outline-primary" href="{% url 'reports-csv' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-filetype-csv"></i> Export CSV</a>
+	<a class="btn btn-outline-primary" href="{% url 'reports-excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-file-earmark-spreadsheet"></i> Export Excel</a>
+	<a class="btn btn-outline-primary" href="{% url 'reports-pdf' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
+	<a class="btn btn-primary" target="_blank" rel="noopener" href="{% url 'reports-print' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"><i class="bi bi-printer"></i> Print Report</a>
+</div>
+
+<div class="stat-grid">
+	<article class="stat-card accent-indigo">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-people-fill"></i></span><span class="stat-kicker">Total Students</span></div>
+		<strong class="stat-number">{{ report_total_students }}</strong>
+		<span class="stat-label">Active records in report</span>
+	</article>
+	<article class="stat-card accent-teal">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-currency-rupee"></i></span><span class="stat-kicker">Total Fees</span></div>
+		<strong class="stat-number">{{ report_total_fees|floatformat:2 }}</strong>
+		<span class="stat-label">Total fee value</span>
+	</article>
+	<article class="stat-card accent-emerald">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-wallet2"></i></span><span class="stat-kicker">Total Collected</span></div>
+		<strong class="stat-number">{{ report_collected|floatformat:2 }}</strong>
+		<span class="stat-label">Collected amount</span>
+	</article>
+	<article class="stat-card accent-coral">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-hourglass-split"></i></span><span class="stat-kicker">Total Pending</span></div>
+		<strong class="stat-number">{{ report_pending|floatformat:2 }}</strong>
+		<span class="stat-label">Outstanding balance</span>
+	</article>
+	<article class="stat-card accent-violet">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-check2-circle"></i></span><span class="stat-kicker">Fully Paid</span></div>
+		<strong class="stat-number">{{ report_fully_paid }}</strong>
+		<span class="stat-label">Students with no balance</span>
+	</article>
+	<article class="stat-card accent-gold">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="stat-kicker">Partially Paid</span></div>
+		<strong class="stat-number">{{ report_partially_paid }}</strong>
+		<span class="stat-label">Students with partial payment</span>
+	</article>
+	<article class="stat-card accent-slate">
+		<div class="stat-card-top"><span class="stat-icon"><i class="bi bi-slash-circle"></i></span><span class="stat-kicker">Unpaid</span></div>
+		<strong class="stat-number">{{ report_unpaid }}</strong>
+		<span class="stat-label">No payment yet</span>
+	</article>
+</div>
+
+<section class="panel mt-4">
+	<div class="panel-heading">
+		<div>
+			<span class="eyebrow">Filters</span>
+			<h2>Apply report filters</h2>
+		</div>
+	</div>
+	<form method="get" class="row g-3 align-items-end">
+		<div class="col-md-3">
+			<label class="form-label" for="date_from">Date From</label>
+			<input type="date" id="date_from" class="form-control" name="date_from" value="{{ date_from }}">
+		</div>
+		<div class="col-md-3">
+			<label class="form-label" for="date_to">Date To</label>
+			<input type="date" id="date_to" class="form-control" name="date_to" value="{{ date_to }}">
+		</div>
+		<div class="col-md-3">
+			<label class="form-label" for="student">Student</label>
+			<select id="student" class="form-select" name="student">
+				<option value="">All Students</option>
+				{% for student in students_for_dropdown %}
+					<option value="{{ student.pk }}" {% if student.pk|stringformat:'s' == selected_student %}selected{% endif %}>{{ student.name }} ({{ student.student_id }})</option>
+				{% endfor %}
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label class="form-label" for="course">Course</label>
+			<select id="course" class="form-select" name="course">
+				<option value="">All Courses</option>
+				{% for course in course_options %}
+					<option value="{{ course }}" {% if course == selected_course %}selected{% endif %}>{{ course }}</option>
+				{% endfor %}
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label class="form-label" for="payment_status">Payment Status</label>
+			<select id="payment_status" class="form-select" name="payment_status">
+				<option value="">All Statuses</option>
+				<option value="PAID" {% if selected_payment_status == 'PAID' %}selected{% endif %}>PAID</option>
+				<option value="PARTIAL" {% if selected_payment_status == 'PARTIAL' %}selected{% endif %}>PARTIAL</option>
+				<option value="PENDING" {% if selected_payment_status == 'PENDING' %}selected{% endif %}>PENDING</option>
+			</select>
+		</div>
+		<div class="col-md-3">
+			<label class="form-label" for="payment_method">Payment Method</label>
+			<select id="payment_method" class="form-select" name="payment_method">
+				<option value="">All Methods</option>
+				{% for method in payment_method_options %}
+					<option value="{{ method }}" {% if method == selected_payment_method %}selected{% endif %}>{{ method }}</option>
+				{% endfor %}
+			</select>
+		</div>
+		<div class="col-md-3 d-grid gap-2">
+			<button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply Filters</button>
+			<a href="{% url 'reports' %}" class="btn btn-outline-secondary">Reset Filters</a>
+		</div>
+	</form>
+</section>
+
+<div class="report-grid mt-4">
+	<section class="panel report-chart-panel">
+		<div class="panel-heading">
+			<div>
+				<span class="eyebrow">Overall position</span>
+				<h2>Collected vs pending</h2>
+			</div>
+		</div>
+		<div class="report-chart-wrap"><canvas id="reportChart"></canvas></div>
+		<div class="legend-row">
+			<span><i class="legend-dot collected"></i>Collected <strong>{{ report_collected|floatformat:2 }}</strong></span>
+			<span><i class="legend-dot pending"></i>Pending <strong>{{ report_pending|floatformat:2 }}</strong></span>
+		</div>
+	</section>
+
+	<section class="panel">
+		<div class="panel-heading">
+			<div>
+				<span class="eyebrow">Trend</span>
+				<h2>Monthly collection</h2>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table premium-table mb-0">
+				<thead>
+					<tr><th>Month</th><th class="text-end">Collected</th></tr>
+				</thead>
+				<tbody>
+					{% for row in monthly_collections %}
+						<tr><td>{{ row.label }}</td><td class="text-end amount-positive">{{ row.total|floatformat:2 }}</td></tr>
+					{% empty %}
+						<tr><td class="empty-state" colspan="2">No collection data yet.</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+</div>
+
+<div class="report-grid mt-4">
+	<section class="panel">
+		<div class="panel-heading">
+			<div>
+				<span class="eyebrow">Analytics</span>
+				<h2>Course-wise collection</h2>
+			</div>
+		</div>
+		<div class="report-chart-wrap compact-chart"><canvas id="courseChart"></canvas></div>
+	</section>
+
+	<section class="panel">
+		<div class="panel-heading">
+			<div>
+				<span class="eyebrow">Analytics</span>
+				<h2>Payment method distribution</h2>
+			</div>
+		</div>
+		<div class="report-chart-wrap compact-chart"><canvas id="methodChart"></canvas></div>
+	</section>
+
+	<section class="panel">
+		<div class="panel-heading">
+			<div>
+				<span class="eyebrow">Analytics</span>
+				<h2>Payment status mix</h2>
+			</div>
+		</div>
+		<div class="report-chart-wrap compact-chart"><canvas id="statusChart"></canvas></div>
+	</section>
+</div>
+
+<div class="panel mt-4">
+	<div class="panel-heading">
+		<div>
+			<span class="eyebrow">Student overview</span>
+			<h2>Student-wise Fee Report</h2>
+		</div>
+	</div>
+	<div class="table-responsive">
+		<table class="table premium-table">
+			<thead>
+				<tr>
+					<th>Student</th>
+					<th>Course</th>
+					<th>Total Fee</th>
+					<th>Collected</th>
+					<th>Pending</th>
+					<th>Last Payment</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for student in student_rows %}
+					<tr>
+						<td><strong>{{ student.name }}</strong><br><small>{{ student.student_id }}</small></td>
+						<td>{{ student.course }}</td>
+						<td>{{ student.total_fee|floatformat:2 }}</td>
+						<td>{{ student.paid_total|floatformat:2 }}</td>
+						<td>{{ student.pending_total|floatformat:2 }}</td>
+						<td>{% if student.last_payment_date %}{{ student.last_payment_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+					</tr>
+				{% empty %}
+					<tr><td class="empty-state" colspan="6">No student data available for the selected filters.</td></tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+
+<div class="panel mt-4">
+	<div class="panel-heading">
+		<div>
+			<span class="eyebrow">Ledger</span>
+			<h2>Payment-wise Report</h2>
+		</div>
+	</div>
+	<div class="table-responsive">
+		<table class="table premium-table">
+			<thead>
+				<tr>
+					<th>Receipt</th>
+					<th>Date</th>
+					<th>Student</th>
+					<th>Course</th>
+					<th>Amount</th>
+					<th>Method</th>
+					<th>Reference</th>
+					<th>Status</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for payment in payment_rows %}
+					<tr>
+						<td><a href="{{ payment.student_url }}">{{ payment.receipt_number }}</a></td>
+						<td>{{ payment.payment_date|date:"d M Y" }}</td>
+						<td>{{ payment.student_name }}</td>
+						<td>{{ payment.course }}</td>
+						<td>{{ payment.amount_paid|floatformat:2 }}</td>
+						<td>{{ payment.payment_method }}</td>
+						<td>{{ payment.transaction_id }}</td>
+						<td><span class="status-badge {% if payment.status == 'PAID' %}status-success{% elif payment.status == 'PARTIAL' %}status-warning{% else %}status-danger{% endif %}">{{ payment.status }}</span></td>
+					</tr>
+				{% empty %}
+					<tr><td class="empty-state" colspan="8">No payment records available for the selected filters.</td></tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+</div>
+
+{{ report_collected|json_script:"report-collected" }}
+{{ report_pending|json_script:"report-pending" }}
+{{ monthly_collections|json_script:"monthly-collections-data" }}
+{{ course_collections|json_script:"course-collections-data" }}
+{{ method_collections|json_script:"method-collections-data" }}
+{{ status_rows|json_script:"status-rows-data" }}
 {% endblock %}
-{% block extra_js %}<script>document.addEventListener('DOMContentLoaded', () => { const canvas = document.getElementById('reportChart'); if (!canvas || !window.Chart) return; const collected = Number(JSON.parse(document.getElementById('report-collected').textContent)); const pending = Number(JSON.parse(document.getElementById('report-pending').textContent)); new Chart(canvas, { type: 'doughnut', data: { labels: ['Collected', 'Pending'], datasets: [{ data: [collected, pending], backgroundColor: ['#16a89a', '#e56968'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } } }); });</script>{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+	const createNumeric = (nodeId) => Number(JSON.parse(document.getElementById(nodeId).textContent));
+	const canvas = document.getElementById('reportChart');
+	if (canvas && window.Chart) {
+		const collected = createNumeric('report-collected');
+		const pending = createNumeric('report-pending');
+		new Chart(canvas, {
+			type: 'doughnut',
+			data: {
+				labels: ['Collected', 'Pending'],
+				datasets: [{ data: [collected, pending], backgroundColor: ['#16a89a', '#e56968'], borderWidth: 0 }]
+			},
+			options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+		});
+	}
+
+	if (window.Chart && document.getElementById('courseChart')) {
+		const courseData = JSON.parse(document.getElementById('course-collections-data').textContent);
+		new Chart(document.getElementById('courseChart'), {
+			type: 'bar',
+			data: {
+				labels: courseData.map(item => item.label),
+				datasets: [{ label: 'Collection', data: courseData.map(item => Number(item.total)), backgroundColor: '#5b8def' }]
+			},
+			options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+		});
+	}
+
+	if (window.Chart && document.getElementById('methodChart')) {
+		const methodData = JSON.parse(document.getElementById('method-collections-data').textContent);
+		new Chart(document.getElementById('methodChart'), {
+			type: 'pie',
+			data: {
+				labels: methodData.map(item => item.label),
+				datasets: [{ data: methodData.map(item => Number(item.total)), backgroundColor: ['#16a89a', '#3b82f6', '#f59e0b', '#e56968', '#8b5cf6', '#14b8a6'] }]
+			},
+			options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+		});
+	}
+
+	if (window.Chart && document.getElementById('statusChart')) {
+		const statusData = JSON.parse(document.getElementById('status-rows-data').textContent);
+		new Chart(document.getElementById('statusChart'), {
+			type: 'doughnut',
+			data: {
+				labels: statusData.map(item => item.label),
+				datasets: [{ data: statusData.map(item => Number(item.total)), backgroundColor: ['#16a89a', '#f59e0b', '#e56968'] }]
+			},
+			options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom' } } }
+		});
+	}
+});
+</script>
+{% endblock %}
