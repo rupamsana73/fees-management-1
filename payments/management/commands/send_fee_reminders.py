@@ -7,6 +7,8 @@ from django.db.models.functions import Coalesce
 from payments.models import Notification
 from payments.notifications import ReminderCooldownError, send_fee_reminder
 from students.models import Student
+from users.audit import record_audit
+from users.models import AuditLog
 
 
 class Command(BaseCommand):
@@ -37,6 +39,7 @@ class Command(BaseCommand):
 
             if notification.status == Notification.Status.SENT:
                 sent += 1
+                record_audit(None, AuditLog.Action.REMINDER_SENT, target=student, description="Automated fee reminder sent")
                 self.stdout.write(f"Sent reminder to {student.student_id}")
             else:
                 failed += 1

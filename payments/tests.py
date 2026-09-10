@@ -15,6 +15,7 @@ from payments.notifications import send_fee_reminder
 from students.models import Student
 from students.utils import create_student_with_account
 from users.models import User
+from users.models import AuditLog
 
 
 class PaymentReceiptTests(TestCase):
@@ -345,6 +346,7 @@ class NotificationTests(TestCase):
         self.assertIn(self.student.student_id, mail.outbox[0].body)
         self.assertIn(notification.related_payment.receipt_number, mail.outbox[0].body)
         self.assertIn("250.00", mail.outbox[0].body)
+        self.assertTrue(AuditLog.objects.filter(action=AuditLog.Action.PAYMENT_CREATED).exists())
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
     def test_payment_email_failure_does_not_rollback_payment(self):
@@ -410,6 +412,7 @@ class NotificationTests(TestCase):
             {"override": "1"},
         )
         self.assertEqual(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).count(), 2)
+        self.assertTrue(AuditLog.objects.filter(action=AuditLog.Action.REMINDER_SENT).exists())
 
         Notification.objects.filter(
             notification_type=Notification.NotificationType.FEE_REMINDER
@@ -456,3 +459,4 @@ class NotificationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).count(), 2)
         self.assertEqual(Notification.objects.order_by("-pk").first().status, Notification.Status.SENT)
+        self.assertTrue(AuditLog.objects.filter(action=AuditLog.Action.NOTIFICATION_RETRIED).exists())

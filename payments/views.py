@@ -21,6 +21,8 @@ from openpyxl.utils import get_column_letter
 from students.decorators import admin_required
 from students.models import Student
 from users.models import User
+from users.audit import record_audit
+from users.models import AuditLog
 
 from .forms import FeePaymentForm
 from .models import FeePayment, Notification
@@ -34,6 +36,7 @@ def payment_add(request):
     if request.method == "POST" and form.is_valid():
         payment = form.save()
         send_payment_confirmation(payment)
+        record_audit(request, AuditLog.Action.PAYMENT_CREATED, target=payment, description="Payment recorded")
         messages.success(
             request,
             format_html(
@@ -59,7 +62,7 @@ def payment_add(request):
 @login_required
 def payment_receipt(request, payment_id):
     payment = get_object_or_404(FeePayment, pk=payment_id)
-    if request.user.role == User.Role.ADMIN:
+    if request.user.role in {User.Role.ADMIN, User.Role.TEACHER}:
         allowed = True
     elif request.user.role == User.Role.STUDENT:
         allowed = payment.student.user_id == request.user.id
@@ -81,7 +84,7 @@ def payment_receipt(request, payment_id):
 @login_required
 def payment_receipt_pdf(request, payment_id):
     payment = get_object_or_404(FeePayment, pk=payment_id)
-    if request.user.role == User.Role.ADMIN:
+    if request.user.role in {User.Role.ADMIN, User.Role.TEACHER}:
         allowed = True
     elif request.user.role == User.Role.STUDENT:
         allowed = payment.student.user_id == request.user.id
@@ -217,6 +220,7 @@ def notification_retry(request, pk):
     else:
         messages.error(request, "This notification cannot be retried.")
         return redirect("notification-history")
+    record_audit(request, AuditLog.Action.NOTIFICATION_RETRIED, target=notification, description="Notification retry requested")
     if retried.status == Notification.Status.SENT:
         messages.success(request, "Notification retry sent successfully.")
     else:

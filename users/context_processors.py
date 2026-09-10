@@ -7,7 +7,7 @@ from payments.models import FeePayment
 
 
 def admin_context(request):
-    if not request.user.is_authenticated or getattr(request.user, "role", None) != "admin":
+    if not request.user.is_authenticated or getattr(request.user, "role", None) not in {"admin", "teacher"}:
         return {}
     today = date.today()
     collected = (

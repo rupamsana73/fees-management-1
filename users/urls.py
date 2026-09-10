@@ -12,4 +12,9 @@ urlpatterns = [
     path("my-profile/", views.student_profile, name="student-profile"),
     path("my-profile/change-password/", views.student_password_change, name="student-password-change"),
     path("student-profile-missing/", views.student_profile_missing, name="student-profile-missing"),
+    path("teachers/", views.teacher_list, name="teacher-list"),
+    path("teachers/add/", views.teacher_add, name="teacher-add"),
+    path("teachers/<int:pk>/edit/", views.teacher_edit, name="teacher-edit"),
+    path("teachers/<int:pk>/reset-password/", views.teacher_password_reset, name="teacher-password-reset"),
+    path("audit-log/", views.audit_log, name="audit-log"),
 ]

@@ -42,6 +42,14 @@
                 <a class="sidebar-link {% if request.resolver_match.url_name == 'notification-history' %}active{% endif %}" href="{% url 'notification-history' %}">
                     <i class="bi bi-bell-fill"></i><span>Notifications</span>
                 </a>
+                {% if user.role == 'admin' %}
+                <a class="sidebar-link {% if request.resolver_match.url_name == 'teacher-list' or request.resolver_match.url_name == 'teacher-add' or request.resolver_match.url_name == 'teacher-edit' %}active{% endif %}" href="{% url 'teacher-list' %}">
+                    <i class="bi bi-person-gear"></i><span>Staff Management</span>
+                </a>
+                <a class="sidebar-link {% if request.resolver_match.url_name == 'audit-log' %}active{% endif %}" href="{% url 'audit-log' %}">
+                    <i class="bi bi-shield-check"></i><span>Audit Log</span>
+                </a>
+                {% endif %}
             </nav>
             <div class="sidebar-footer">
                 <a class="sidebar-link" href="{% url 'logout' %}">

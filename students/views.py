@@ -12,6 +12,8 @@ from django.views.decorators.http import require_POST
 import logging
 
 from users.models import User
+from users.audit import record_audit
+from users.models import AuditLog
 from payments.models import Notification
 from payments.notifications import NoPendingFeeError, ReminderCooldownError, send_fee_reminder
 
@@ -123,6 +125,7 @@ def student_send_fee_reminder(request, pk):
         )
     else:
         if notification.status == Notification.Status.SENT:
+            record_audit(request, AuditLog.Action.REMINDER_SENT, target=student, description="Fee reminder sent")
             messages.success(request, "Fee reminder sent successfully.")
         else:
             messages.error(request, "Fee reminder could not be sent. The failure was recorded for retry.")
@@ -163,6 +166,8 @@ def student_add(request):
                 "students/student_list.html",
                 {"students": students, "add_form": form, "open_add_modal": True},
             )
+
+        record_audit(request, AuditLog.Action.STUDENT_CREATED, target=student, description="Student record created")
 
         try:
             logger.info(
@@ -266,6 +271,8 @@ def student_resend_credentials(request, pk):
         request.session["created_student_credentials"] = credentials
         messages.success(request, "A new temporary password was emailed successfully.")
 
+    record_audit(request, AuditLog.Action.CREDENTIALS_RESENT, target=student, description="Student credentials resend requested")
+
     return redirect("student-list")
 
 
@@ -273,9 +280,13 @@ def student_resend_credentials(request, pk):
 @admin_required
 def student_edit(request, pk):
     student = get_object_or_404(Student, pk=pk)
+    old_status = student.status
     form = StudentForm(request.POST or None, instance=student)
     if request.method == "POST" and form.is_valid():
         form.save()
+        record_audit(request, AuditLog.Action.STUDENT_UPDATED, target=student, description="Student record updated")
+        if old_status != student.status:
+            record_audit(request, AuditLog.Action.STUDENT_STATUS_CHANGED, target=student, description="Student status changed")
         messages.success(request, "Student updated successfully.")
         return redirect("student-list")
 

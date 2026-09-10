@@ -25,6 +25,10 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in {"true", "1", "yes"}
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "debasiskamila2026@gmail.com")
 FEE_REMINDER_COOLDOWN_DAYS = int(os.getenv("FEE_REMINDER_COOLDOWN_DAYS", "7"))
+SECURE_SSL_REDIRECT = os.getenv("DJANGO_SECURE_SSL_REDIRECT", "False").lower() in {"true", "1", "yes"}
+SESSION_COOKIE_SECURE = os.getenv("DJANGO_SESSION_COOKIE_SECURE", "False").lower() in {"true", "1", "yes"}
+CSRF_COOKIE_SECURE = os.getenv("DJANGO_CSRF_COOKIE_SECURE", "False").lower() in {"true", "1", "yes"}
+SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_SECURE_HSTS_SECONDS", "0"))
 
 INSTALLED_APPS = [
     "django.contrib.admin",
