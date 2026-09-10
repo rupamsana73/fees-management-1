@@ -122,11 +122,19 @@ class LoginPortalTests(TestCase):
     def test_logout_returns_to_login_portal(self):
         self.client.force_login(self.admin)
 
-        response = self.client.get(reverse("logout"))
+        response = self.client.post(reverse("logout"))
 
         self.assertRedirects(response, reverse("login"))
         self.assertNotIn("_auth_user_id", self.client.session)
         self.assertContains(self.client.get(reverse("login")), "Access Portal")
+
+    def test_logout_rejects_get_requests(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse("logout"))
+
+        self.assertEqual(response.status_code, 405)
+        self.assertTrue(self.client.session.get("_auth_user_id"))
 
 
 class StaffManagementAndAuditTests(TestCase):
@@ -216,7 +224,7 @@ class StaffManagementAndAuditTests(TestCase):
         self.assertRedirects(response, reverse("admin-dashboard"))
         self.assertTrue(AuditLog.objects.filter(action=AuditLog.Action.LOGIN_SUCCESS, user=self.teacher).exists())
 
-        self.client.get(reverse("logout"))
+        self.client.post(reverse("logout"))
         self.assertTrue(AuditLog.objects.filter(action=AuditLog.Action.LOGOUT, user=self.teacher).exists())
 
     def test_audit_log_is_paginated_and_contains_no_passwords(self):

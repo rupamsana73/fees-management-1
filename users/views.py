@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from payments.models import FeePayment
 from students.models import Student
@@ -60,6 +61,7 @@ def login_view(request):
     )
 
 
+@require_POST
 def logout_view(request):
     if request.user.is_authenticated:
         record_audit(request, AuditLog.Action.LOGOUT, target=request.user, description="User logged out")

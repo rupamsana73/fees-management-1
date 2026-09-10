@@ -52,9 +52,12 @@
                 {% endif %}
             </nav>
             <div class="sidebar-footer">
-                <a class="sidebar-link" href="{% url 'logout' %}">
-                    <i class="bi bi-box-arrow-left"></i><span>Logout</span>
-                </a>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button class="sidebar-link border-0 bg-transparent w-100 text-start" type="submit">
+                        <i class="bi bi-box-arrow-left"></i><span>Logout</span>
+                    </button>
+                </form>
             </div>
         </aside>
 

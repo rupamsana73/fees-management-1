@@ -3,72 +3,97 @@
 {% block title %}Access Portal | FeeFlow | Student Fee Management System{% endblock %}
 
 {% block content %}
-<div class="brand-shell">
-    <div class="brand-badge">
-        <span class="brand-icon">F</span>
-        <div>
-            <div class="brand-text">Fee<span class="brand-accent">Flow</span></div>
-            <div class="brand-subtitle">Student Fee Management System</div>
-        </div>
-    </div>
-</div>
+<div class="auth-page">
+<a class="auth-brand" href="{% url 'login' %}" aria-label="FeeFlow access portal">
+    <span class="auth-brand-mark" aria-hidden="true">F</span>
+    <span><span class="auth-brand-name">Fee<span class="auth-accent">Flow</span></span><span class="auth-brand-subtitle d-block">Student Fee Management System</span></span>
+</a>
 {% if mode == "portal" %}
-<div class="text-center portal-heading">
-    <p class="brand-subtitle mb-2">Secure entry</p>
-    <h1 class="h2 mb-2">Access Portal</h1>
-    <p class="text-muted">Choose how you access FeeFlow.</p>
+<div class="auth-intro">
+    <span class="auth-eyebrow">Secure entry</span>
+    <h1>Welcome to FeeFlow</h1>
+    <p>One place for students and institute staff to manage tuition, payments, and progress with confidence.</p>
 </div>
-<div class="row justify-content-center g-4 portal-options">
-    <div class="col-12 col-md-6">
-        <a class="card auth-choice h-100 text-decoration-none" href="{% url 'login' %}?role=student">
-            <div class="card-body p-4 p-lg-5">
-                <div class="choice-icon student-choice">&#128105;&#8205;&#127891;</div>
-                <h2 class="h4">Student Login</h2>
-                <p class="text-muted mb-0">Login with your student username and password.</p>
-            </div>
-        </a>
-    </div>
-    <div class="col-12 col-md-6">
-        <a class="card auth-choice h-100 text-decoration-none" href="{% url 'login' %}?role=teacher">
-            <div class="card-body p-4 p-lg-5">
-                <div class="choice-icon teacher-choice">&#128104;&#8205;&#127979;</div>
-                <h2 class="h4">Teacher Login</h2>
-                <p class="text-muted mb-0">Access student management, payments and reports.</p>
-            </div>
-        </a>
-    </div>
-</div>
-{% else %}
-<div class="row justify-content-center">
-    <div class="col-12 col-md-6 col-lg-5">
-        <div class="card auth-card">
-            <div class="card-body p-4">
-                <div class="text-center mb-4">
-                    <p class="brand-subtitle mb-2">{{ mode|title }} access</p>
-                    <h1 class="h3 mb-0">{{ mode|title }} Login</h1>
-                    <small class="text-muted">Debasis Kamila</small>
-                </div>
-                {% if error %}
-                    <div class="alert alert-danger" role="alert">{{ error }}</div>
-                {% endif %}
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="role" value="{{ mode }}">
-                    <div class="mb-3">
-                        <label class="form-label" for="id_username">Username</label>
-                        {{ form.username }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="id_password">Password</label>
-                        {{ form.password }}
-                    </div>
-                    <button class="btn btn-primary w-100" type="submit">Login as {{ mode|title }}</button>
-                </form>
-                {% if mode == "student" %}<p class="text-center text-muted small mt-3 mb-0">Don't have an account? Contact your teacher/admin.</p>{% endif %}
-                <a class="back-link d-block text-center mt-3" href="{% url 'login' %}">&larr; Back to login options</a>
-            </div>
+<div class="auth-options">
+    <a class="auth-choice" href="{% url 'login' %}?role=student">
+        <div class="auth-choice-top">
+            <span class="auth-choice-icon student" aria-hidden="true">&#128105;&#8205;&#127891;</span>
+            <h2>Student Login</h2>
+            <p>View your fee summary, payment history, and personal progress.</p>
         </div>
+        <span class="auth-choice-cta">Continue as student <span aria-hidden="true">&#8594;</span></span>
+    </a>
+    <a class="auth-choice" href="{% url 'login' %}?role=teacher">
+        <div class="auth-choice-top">
+            <span class="auth-choice-icon teacher" aria-hidden="true">&#128104;&#8205;&#127979;</span>
+            <h2>Teacher Login</h2>
+            <p>Manage students, payments, reminders, reports, and institute operations.</p>
+        </div>
+        <span class="auth-choice-cta">Continue as teacher <span aria-hidden="true">&#8594;</span></span>
+    </a>
+</div>
+<p class="auth-footer">Trusted fee management for Debasis Kamila</p>
+{% else %}
+<div class="auth-login-layout">
+    <div class="auth-login-aside">
+        <span class="auth-eyebrow">{{ mode|title }} access</span>
+        <h1>{{ mode|title }} Login</h1>
+        <p>{% if mode == "student" %}Stay close to your fee progress and payment history from anywhere.{% else %}A focused workspace for keeping student fee operations moving.{% endif %}</p>
+        <div class="auth-aside-note"><span class="auth-aside-dot" aria-hidden="true"></span><span>Secure access for <strong>Debasis Kamila</strong></span></div>
     </div>
+    <section class="auth-card" aria-labelledby="login-heading">
+        <div class="auth-card-header">
+            <span class="auth-eyebrow">{{ mode|title }} access</span>
+            <h2 id="login-heading">Sign in to FeeFlow</h2>
+            <p>Enter your credentials to continue to your workspace.</p>
+        </div>
+        {% if error %}<div class="auth-error" role="alert"><strong>Unable to sign in.</strong><br>{{ error }}</div>{% endif %}
+        <form method="post" data-auth-form>
+            {% csrf_token %}
+            <input type="hidden" name="role" value="{{ mode }}">
+            <div class="auth-field">
+                <label for="id_username">Username</label>
+                {{ form.username }}
+            </div>
+            <div class="auth-field">
+                <label for="id_password">Password</label>
+                <div class="auth-input-wrap">
+                    {{ form.password }}
+                    <button class="auth-toggle" type="button" data-password-toggle aria-label="Show password" aria-pressed="false">&#128065;</button>
+                </div>
+            </div>
+            <button class="auth-submit" type="submit" data-login-submit><span data-submit-label>Login as {{ mode|title }}</span><span aria-hidden="true">&#8594;</span></button>
+        </form>
+        {% if mode == "student" %}<p class="auth-helper">Don't have an account? Contact your teacher/admin.</p>{% endif %}
+        <a class="auth-link" href="{% url 'login' %}">&#8592; Back to login options</a>
+    </section>
 </div>
 {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const password = document.getElementById('id_password');
+    const toggle = document.querySelector('[data-password-toggle]');
+    const form = document.querySelector('[data-auth-form]');
+    const submit = document.querySelector('[data-login-submit]');
+    const label = document.querySelector('[data-submit-label]');
+    document.getElementById('id_username')?.setAttribute('autocomplete', 'username');
+    password?.setAttribute('autocomplete', 'current-password');
+    toggle?.addEventListener('click', () => {
+        const visible = password.type === 'password';
+        password.type = visible ? 'text' : 'password';
+        toggle.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+        toggle.setAttribute('aria-pressed', String(visible));
+        toggle.textContent = visible ? '\u{1F648}' : '\u{1F441}';
+    });
+    form?.addEventListener('submit', () => {
+        if (!submit) return;
+        submit.disabled = true;
+        if (label) label.textContent = 'Signing in...';
+    });
+});
+</script>
 {% endblock %}

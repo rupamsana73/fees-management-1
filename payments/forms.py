@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 
 from students.models import Student
@@ -32,3 +34,15 @@ class FeePaymentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["student"].queryset = Student.objects.order_by("name")
+
+    def clean_amount_paid(self):
+        amount_paid = self.cleaned_data["amount_paid"]
+        if amount_paid <= Decimal("0.00"):
+            raise forms.ValidationError("Payment amount must be greater than zero.")
+        return amount_paid
+
+    def clean_transaction_id(self):
+        transaction_id = self.cleaned_data["transaction_id"].strip()
+        if transaction_id and FeePayment.objects.filter(transaction_id=transaction_id).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("This transaction ID has already been recorded.")
+        return transaction_id

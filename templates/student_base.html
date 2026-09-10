@@ -25,7 +25,7 @@
                 <a class="sidebar-link {% if request.resolver_match.url_name == 'payment-history' %}active{% endif %}" href="{% url 'payment-history' %}"><i class="bi bi-receipt-cutoff"></i><span>Payment History</span></a>
                 <a class="sidebar-link {% if request.resolver_match.url_name == 'student-profile' or request.resolver_match.url_name == 'student-password-change' %}active{% endif %}" href="{% url 'student-profile' %}"><i class="bi bi-person-vcard-fill"></i><span>My Profile</span></a>
             </nav>
-            <div class="sidebar-footer"><a class="sidebar-link" href="{% url 'logout' %}"><i class="bi bi-box-arrow-left"></i><span>Logout</span></a></div>
+            <div class="sidebar-footer"><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="sidebar-link border-0 bg-transparent w-100 text-start" type="submit"><i class="bi bi-box-arrow-left"></i><span>Logout</span></button></form></div>
         </aside>
         <div class="admin-main">
             <header class="topbar">

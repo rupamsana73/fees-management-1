@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 from django.core import mail
 from django.core.management import call_command
+from django.db import IntegrityError
 from django.test import TestCase
 from django.test import override_settings
 from django.utils import timezone
@@ -50,6 +51,90 @@ class PaymentReceiptTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "PAYMENT RECEIPT")
         self.assertContains(response, self.student.name)
+
+    def test_payment_form_rejects_nonpositive_amounts(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("payment-add"),
+            {
+                "student": self.student.pk,
+                "amount_paid": "-10.00",
+                "month": "September 2026",
+                "payment_method": "Cash",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(FeePayment.objects.filter(amount_paid=Decimal("-10.00")).exists())
+
+    def test_payment_form_rejects_duplicate_transaction_ids(self):
+        FeePayment.objects.create(
+            student=self.student,
+            amount_paid=Decimal("100.00"),
+            month="August 2026",
+            transaction_id="TXN-DUPLICATE",
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("payment-add"),
+            {
+                "student": self.student.pk,
+                "amount_paid": "50.00",
+                "month": "September 2026",
+                "payment_method": "UPI",
+                "transaction_id": "TXN-DUPLICATE",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(FeePayment.objects.filter(transaction_id="TXN-DUPLICATE").count(), 1)
+
+    def test_database_allows_blank_and_rejects_duplicate_transaction_ids(self):
+        FeePayment.objects.create(
+            student=self.student,
+            amount_paid=Decimal("25.00"),
+            month="October 2026",
+        )
+        FeePayment.objects.create(
+            student=self.student,
+            amount_paid=Decimal("30.00"),
+            month="November 2026",
+        )
+        FeePayment.objects.create(
+            student=self.student,
+            amount_paid=Decimal("40.00"),
+            month="December 2026",
+            transaction_id="TXN-UNIQUE",
+        )
+
+        with self.assertRaises(IntegrityError):
+            FeePayment.objects.create(
+                student=self.student,
+                amount_paid=Decimal("50.00"),
+                month="January 2027",
+                transaction_id="TXN-UNIQUE",
+            )
+
+    @patch("payments.views.FeePaymentForm.save", side_effect=IntegrityError)
+    def test_database_duplicate_is_returned_as_form_error(self, save_mock):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("payment-add"),
+            {
+                "student": self.student.pk,
+                "amount_paid": "50.00",
+                "month": "September 2026",
+                "payment_method": "UPI",
+                "transaction_id": "TXN-RACE",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This transaction ID has already been recorded.")
+        save_mock.assert_called_once()
 
     def test_student_can_view_own_receipt(self):
         self.client.force_login(self.student.user)

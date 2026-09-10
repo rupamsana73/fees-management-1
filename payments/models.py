@@ -20,6 +20,15 @@ class FeePayment(models.Model):
     remarks = models.CharField(max_length=255, blank=True)
     receipt_number = models.CharField(max_length=50, unique=True, blank=True, db_index=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("transaction_id",),
+                condition=~models.Q(transaction_id=""),
+                name="unique_nonblank_payment_transaction_id",
+            ),
+        ]
+
     def __str__(self):
         return f"{self.student.name} - {self.month} - {self.amount_paid}"
 

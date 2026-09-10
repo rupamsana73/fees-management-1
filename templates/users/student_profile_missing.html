@@ -9,7 +9,7 @@
             <div class="display-5 text-primary mb-3"><i class="bi bi-person-vcard"></i></div>
             <h1 class="h3">Student profile setup required</h1>
             <p class="text-secondary">Your account is active, but it is not linked to a student profile yet. Please contact an administrator to complete your setup.</p>
-            <a class="btn btn-primary" href="{% url 'logout' %}">Sign out</a>
+            <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn btn-primary" type="submit">Sign out</button></form>
         </div>
     </div>
 </div>

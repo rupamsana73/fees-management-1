@@ -5,6 +5,7 @@ from io import BytesIO
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError, transaction
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
@@ -34,18 +35,23 @@ from .notifications import send_fee_reminder, send_payment_confirmation
 def payment_add(request):
     form = FeePaymentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        payment = form.save()
-        send_payment_confirmation(payment)
-        record_audit(request, AuditLog.Action.PAYMENT_CREATED, target=payment, description="Payment recorded")
-        messages.success(
-            request,
-            format_html(
-                'Payment added successfully. <a href="{}">View Receipt</a> | <a href="{}">Download PDF</a>',
-                reverse("payment-receipt", args=[payment.pk]),
-                reverse("payment-receipt-pdf", args=[payment.pk]),
-            ),
-        )
-        return redirect("student-list")
+        try:
+            with transaction.atomic():
+                payment = form.save()
+        except IntegrityError:
+            form.add_error("transaction_id", "This transaction ID has already been recorded.")
+        else:
+            send_payment_confirmation(payment)
+            record_audit(request, AuditLog.Action.PAYMENT_CREATED, target=payment, description="Payment recorded")
+            messages.success(
+                request,
+                format_html(
+                    'Payment added successfully. <a href="{}">View Receipt</a> | <a href="{}">Download PDF</a>',
+                    reverse("payment-receipt", args=[payment.pk]),
+                    reverse("payment-receipt-pdf", args=[payment.pk]),
+                ),
+            )
+            return redirect("student-list")
 
     students = Student.objects.annotate(
         paid_total=Coalesce(
