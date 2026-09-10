@@ -1,0 +1,21 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Notification History | FeeFlow{% endblock %}
+{% block page_heading %}Notification History{% endblock %}
+
+{% block content %}
+<div class="page-intro"><div><span class="eyebrow">Communication log</span><h1>Notification history</h1><p>Review payment confirmations and fee reminder delivery status.</p></div></div>
+<section class="panel mb-4">
+    <div class="panel-heading"><div><span class="eyebrow">Filters</span><h2>Find notifications</h2></div></div>
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-3"><label class="form-label" for="student">Student</label><select class="form-select" id="student" name="student"><option value="">All Students</option>{% for student in students_for_filter %}<option value="{{ student.pk }}" {% if selected_student == student.pk|stringformat:'s' %}selected{% endif %}>{{ student.name }} ({{ student.student_id }})</option>{% endfor %}</select></div>
+        <div class="col-md-3"><label class="form-label" for="notification_type">Type</label><select class="form-select" id="notification_type" name="notification_type"><option value="">All Types</option>{% for value, label in notification_types %}<option value="{{ value }}" {% if selected_notification_type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-md-2"><label class="form-label" for="status">Status</label><select class="form-select" id="status" name="status"><option value="">All Statuses</option>{% for value, label in notification_statuses %}<option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-md-2"><label class="form-label" for="date">Date</label><input class="form-control" id="date" type="date" name="date" value="{{ selected_date }}"></div>
+        <div class="col-md-2 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Apply</button></div>
+    </form>
+</section>
+<section class="panel"><div class="table-responsive"><table class="table premium-table align-middle mb-0"><thead><tr><th>Student</th><th>Student ID</th><th>Type</th><th>Recipient</th><th>Date/Time</th><th>Status</th><th>Receipt</th><th>Action</th></tr></thead><tbody>
+{% for notification in notifications %}<tr><td>{{ notification.student.name }}</td><td>{{ notification.student.student_id }}</td><td>{{ notification.get_notification_type_display }}</td><td>{{ notification.recipient_email }}</td><td>{{ notification.sent_at|date:"d M Y, H:i" }}</td><td><span class="status-badge {% if notification.status == 'SENT' %}status-success{% else %}status-danger{% endif %}">{{ notification.get_status_display }}</span>{% if notification.error_message %}<small class="d-block muted-text">{{ notification.error_message }}</small>{% endif %}</td><td>{% if notification.related_payment %}<a href="{% url 'payment-receipt' notification.related_payment.pk %}">{{ notification.related_payment.receipt_number }}</a>{% else %}—{% endif %}</td><td>{% if notification.status == 'FAILED' %}<form method="post" action="{% url 'notification-retry' notification.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-arrow-repeat"></i> Retry</button></form>{% else %}—{% endif %}</td></tr>
+{% empty %}<tr><td class="empty-state" colspan="8">No notifications found.</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}

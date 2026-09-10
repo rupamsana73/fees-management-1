@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum, Value
+from django.db.models import DecimalField, ExpressionWrapper, F, Prefetch, Sum, Value
 from django.db.models.functions import Coalesce
 from decimal import Decimal
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,6 +12,8 @@ from django.views.decorators.http import require_POST
 import logging
 
 from users.models import User
+from payments.models import Notification
+from payments.notifications import NoPendingFeeError, ReminderCooldownError, send_fee_reminder
 
 from .decorators import admin_required
 from .forms import AddStudentForm, StudentForm
@@ -94,8 +96,37 @@ def _student_created_message(request):
 @login_required
 @admin_required
 def pending_fees(request):
-    students = student_balance_queryset().filter(pending_total__gt=0).order_by("-pending_total")
+    reminder_history = Notification.objects.filter(
+        notification_type=Notification.NotificationType.FEE_REMINDER
+    ).order_by("-sent_at")
+    students = student_balance_queryset().filter(pending_total__gt=0).order_by("-pending_total").prefetch_related(
+        Prefetch("notifications", queryset=reminder_history, to_attr="reminder_history")
+    )
+    for student in students:
+        student.last_reminder = student.reminder_history[0] if student.reminder_history else None
     return render(request, "students/pending_fees.html", {"students": students})
+
+
+@login_required
+@admin_required
+@require_POST
+def student_send_fee_reminder(request, pk):
+    student = get_object_or_404(Student.objects.select_related("user"), pk=pk)
+    try:
+        notification = send_fee_reminder(student, force=request.POST.get("override") == "1")
+    except NoPendingFeeError:
+        messages.info(request, "This student has no pending fee, so no reminder was sent.")
+    except ReminderCooldownError:
+        messages.warning(
+            request,
+            "A reminder was already sent within the cooldown period. Use resend to override the cooldown.",
+        )
+    else:
+        if notification.status == Notification.Status.SENT:
+            messages.success(request, "Fee reminder sent successfully.")
+        else:
+            messages.error(request, "Fee reminder could not be sent. The failure was recorded for retry.")
+    return redirect("pending-fees")
 
 
 @login_required

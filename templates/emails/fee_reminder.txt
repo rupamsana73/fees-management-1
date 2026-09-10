@@ -1,0 +1,20 @@
+FeeFlow
+Student Fee Management System
+
+Fee payment reminder
+
+Hello {{ student_name }},
+
+This is a friendly reminder that your student fee account has an outstanding balance.
+
+Student Name: {{ student_name }}
+Student ID: {{ student_id }}
+Total Fee: ₹{{ total_fee|floatformat:2 }}
+Amount Paid: ₹{{ amount_paid|floatformat:2 }}
+Pending Amount: ₹{{ pending_amount|floatformat:2 }}
+
+Please contact your teacher/admin to arrange payment or clarify your account.
+
+Regards,
+{{ client_name }}
+FeeFlow

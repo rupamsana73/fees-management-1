@@ -1,10 +1,17 @@
 from decimal import Decimal
+from datetime import timedelta
 from io import BytesIO
+from unittest.mock import patch
 
+from django.core import mail
+from django.core.management import call_command
 from django.test import TestCase
+from django.test import override_settings
+from django.utils import timezone
 from django.urls import reverse
 
-from payments.models import FeePayment
+from payments.models import FeePayment, Notification
+from payments.notifications import send_fee_reminder
 from students.models import Student
 from students.utils import create_student_with_account
 from users.models import User
@@ -288,3 +295,164 @@ class AdvancedReportsTests(TestCase):
         self.assertIn("Receipt Number,Payment Date,Student Name", content)
         self.assertNotIn("Charlie Report", content)
         self.assertNotIn("TXN-1001", content)
+
+
+class NotificationTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username="notification-admin",
+            password="TeacherPass123!",
+            role=User.Role.ADMIN,
+        )
+        self.student_user = User.objects.create_user(
+            username="notification-student",
+            password="StudentPass123!",
+            role=User.Role.STUDENT,
+        )
+        self.student = Student.objects.create(
+            user=self.student_user,
+            student_id="STU300",
+            name="Reminder Student",
+            email="reminder@example.com",
+            course="Physics",
+            total_fee=Decimal("1000.00"),
+        )
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_payment_confirmation_email_contains_payment_details(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse("payment-add"),
+            {
+                "student": self.student.pk,
+                "amount_paid": "250.00",
+                "month": "September 2026",
+                "payment_method": "UPI",
+                "transaction_id": "PAY-300",
+                "remarks": "Tuition",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        notification = Notification.objects.filter(
+            notification_type=Notification.NotificationType.PAYMENT_CONFIRMATION,
+        ).get()
+        self.assertEqual(notification.status, Notification.Status.SENT)
+        self.assertEqual(notification.recipient_email, self.student.email)
+        self.assertEqual(notification.related_payment.amount_paid, Decimal("250.00"))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(self.student.student_id, mail.outbox[0].body)
+        self.assertIn(notification.related_payment.receipt_number, mail.outbox[0].body)
+        self.assertIn("250.00", mail.outbox[0].body)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_payment_email_failure_does_not_rollback_payment(self):
+        self.client.force_login(self.admin)
+        with patch("payments.notifications.EmailMultiAlternatives.send", side_effect=RuntimeError("SMTP unavailable")):
+            response = self.client.post(
+                reverse("payment-add"),
+                {
+                    "student": self.student.pk,
+                    "amount_paid": "200.00",
+                    "month": "September 2026",
+                    "payment_method": "Cash",
+                    "transaction_id": "PAY-FAIL",
+                    "remarks": "Failure test",
+                },
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(FeePayment.objects.filter(transaction_id="PAY-FAIL").exists())
+        notification = Notification.objects.get(notification_type=Notification.NotificationType.PAYMENT_CONFIRMATION)
+        self.assertEqual(notification.status, Notification.Status.FAILED)
+        self.assertNotIn("SMTP unavailable", notification.error_message)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", FEE_REMINDER_COOLDOWN_DAYS=7)
+    def test_pending_student_receives_reminder_and_cooldown_blocks_repeat(self):
+        self.student._paid_total = Decimal("0.00")
+        notification = send_fee_reminder(self.student)
+
+        self.assertEqual(notification.status, Notification.Status.SENT)
+        self.assertEqual(notification.recipient_email, self.student.email)
+        self.assertEqual(notification.notification_type, Notification.NotificationType.FEE_REMINDER)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("1000.00", mail.outbox[0].body)
+        self.assertIn("Reminder Student", mail.outbox[0].body)
+
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("student-send-fee-reminder", args=[self.student.pk]))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).count(), 1)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_zero_pending_fee_does_not_send_reminder(self):
+        FeePayment.objects.create(
+            student=self.student,
+            amount_paid=Decimal("1000.00"),
+            month="September 2026",
+            payment_method="Cash",
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(reverse("student-send-fee-reminder", args=[self.student.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).exists())
+        self.assertEqual(len(mail.outbox), 0)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_manual_override_sends_again_and_command_continues_after_failure(self):
+        self.client.force_login(self.admin)
+        self.client.post(reverse("student-send-fee-reminder", args=[self.student.pk]))
+        self.client.post(
+            reverse("student-send-fee-reminder", args=[self.student.pk]),
+            {"override": "1"},
+        )
+        self.assertEqual(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).count(), 2)
+
+        Notification.objects.filter(
+            notification_type=Notification.NotificationType.FEE_REMINDER
+        ).update(sent_at=timezone.now() - timedelta(days=8))
+
+        with patch("payments.notifications.EmailMultiAlternatives.send", side_effect=RuntimeError("SMTP unavailable")):
+            call_command("send_fee_reminders")
+        self.assertEqual(Notification.objects.filter(status=Notification.Status.FAILED).count(), 1)
+
+    def test_students_cannot_send_reminders_or_view_notification_history(self):
+        self.client.force_login(self.student_user)
+
+        reminder_response = self.client.post(reverse("student-send-fee-reminder", args=[self.student.pk]))
+        history_response = self.client.get(reverse("notification-history"))
+
+        self.assertEqual(reminder_response.status_code, 302)
+        self.assertEqual(history_response.status_code, 302)
+        self.assertEqual(reminder_response.url, reverse("student-dashboard"))
+        self.assertEqual(history_response.url, reverse("student-dashboard"))
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_admin_can_filter_notification_history(self):
+        self.client.force_login(self.admin)
+        send_fee_reminder(self.student)
+
+        response = self.client.get(
+            reverse("notification-history"),
+            {"student": self.student.pk, "notification_type": Notification.NotificationType.FEE_REMINDER},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.student.student_id)
+        self.assertContains(response, self.student.email)
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_admin_can_retry_failed_reminder(self):
+        with patch("payments.notifications.EmailMultiAlternatives.send", side_effect=RuntimeError("SMTP unavailable")):
+            failed = send_fee_reminder(self.student)
+
+        self.assertEqual(failed.status, Notification.Status.FAILED)
+        self.client.force_login(self.admin)
+        response = self.client.post(reverse("notification-retry", args=[failed.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).count(), 2)
+        self.assertEqual(Notification.objects.order_by("-pk").first().status, Notification.Status.SENT)

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>FeeFlow Fee Reminder</title></head>
+<body style="margin:0;background:#f5f7fb;color:#1a2332;font-family:Arial,sans-serif;padding:24px;">
+  <div style="max-width:620px;margin:0 auto;background:#fff;border:1px solid #e7ebf2;border-radius:14px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#5b5ce2,#16a89a);padding:24px 28px;color:#fff;"><h1 style="margin:0;font-size:28px;">FeeFlow</h1><p style="margin:6px 0 0;">Student Fee Management System</p></div>
+    <div style="padding:28px;line-height:1.6;">
+      <h2 style="margin-top:0;">Fee payment reminder</h2>
+      <p>Hello {{ student_name }},</p><p>This is a friendly reminder that your student fee account has an outstanding balance.</p>
+      <table style="width:100%;border-collapse:collapse;margin:18px 0;">
+        <tr><td style="padding:10px;border:1px solid #edf1f7;font-weight:700;">Student Name</td><td style="padding:10px;border:1px solid #edf1f7;">{{ student_name }}</td></tr>
+        <tr><td style="padding:10px;border:1px solid #edf1f7;font-weight:700;">Student ID</td><td style="padding:10px;border:1px solid #edf1f7;">{{ student_id }}</td></tr>
+        <tr><td style="padding:10px;border:1px solid #edf1f7;font-weight:700;">Total Fee</td><td style="padding:10px;border:1px solid #edf1f7;">₹{{ total_fee|floatformat:2 }}</td></tr>
+        <tr><td style="padding:10px;border:1px solid #edf1f7;font-weight:700;">Amount Paid</td><td style="padding:10px;border:1px solid #edf1f7;">₹{{ amount_paid|floatformat:2 }}</td></tr>
+        <tr><td style="padding:10px;border:1px solid #edf1f7;font-weight:700;">Pending Amount</td><td style="padding:10px;border:1px solid #edf1f7;">₹{{ pending_amount|floatformat:2 }}</td></tr>
+      </table>
+      <p>Please contact your teacher/admin to arrange payment or clarify your account.</p><p>Regards,<br>{{ client_name }}<br>FeeFlow</p>
+    </div>
+  </div>
+</body>
+</html>

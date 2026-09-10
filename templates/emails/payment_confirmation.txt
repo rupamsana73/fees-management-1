@@ -1,0 +1,22 @@
+FeeFlow
+Student Fee Management System
+
+Payment received
+
+Hello {{ student_name }},
+
+Your fee payment has been recorded successfully.
+
+Student Name: {{ student_name }}
+Student ID: {{ student_id }}
+Payment Amount: ₹{{ payment_amount|floatformat:2 }}
+Payment Date: {{ payment_date|date:"d F Y" }}
+Payment Method: {{ payment_method }}
+Receipt Number: {{ receipt_number }}
+Total Fee: ₹{{ total_fee|floatformat:2 }}
+Total Paid: ₹{{ total_paid|floatformat:2 }}
+Remaining Balance: ₹{{ pending_amount|floatformat:2 }}
+
+Regards,
+{{ client_name }}
+FeeFlow

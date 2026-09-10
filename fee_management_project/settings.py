@@ -24,6 +24,7 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in {"true", "1", "yes"}
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "debasiskamila2026@gmail.com")
+FEE_REMINDER_COOLDOWN_DAYS = int(os.getenv("FEE_REMINDER_COOLDOWN_DAYS", "7"))
 
 INSTALLED_APPS = [
     "django.contrib.admin",

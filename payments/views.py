@@ -23,7 +23,8 @@ from students.models import Student
 from users.models import User
 
 from .forms import FeePaymentForm
-from .models import FeePayment
+from .models import FeePayment, Notification
+from .notifications import send_fee_reminder, send_payment_confirmation
 
 
 @login_required
@@ -32,6 +33,7 @@ def payment_add(request):
     form = FeePaymentForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         payment = form.save()
+        send_payment_confirmation(payment)
         messages.success(
             request,
             format_html(
@@ -163,6 +165,63 @@ def reports(request):
         "payments/reports.html",
         context,
     )
+
+
+@login_required
+@admin_required
+def notification_history(request):
+    notifications = Notification.objects.select_related("student", "related_payment")
+    student_id = request.GET.get("student")
+    notification_type = request.GET.get("notification_type")
+    status = request.GET.get("status")
+    sent_date = request.GET.get("date")
+    if student_id:
+        notifications = notifications.filter(student_id=student_id)
+    if notification_type:
+        notifications = notifications.filter(notification_type=notification_type)
+    if status:
+        notifications = notifications.filter(status=status)
+    if sent_date:
+        notifications = notifications.filter(sent_at__date=sent_date)
+    return render(
+        request,
+        "payments/notification_history.html",
+        {
+            "notifications": notifications,
+            "students_for_filter": Student.objects.order_by("name"),
+            "selected_student": student_id or "",
+            "selected_notification_type": notification_type or "",
+            "selected_status": status or "",
+            "selected_date": sent_date or "",
+            "notification_types": Notification.NotificationType.choices,
+            "notification_statuses": Notification.Status.choices,
+        },
+    )
+
+
+@login_required
+@admin_required
+def notification_retry(request, pk):
+    if request.method != "POST":
+        return redirect("notification-history")
+    notification = get_object_or_404(
+        Notification.objects.select_related("student", "related_payment"), pk=pk
+    )
+    if notification.status != Notification.Status.FAILED:
+        messages.info(request, "Only failed notifications can be retried.")
+        return redirect("notification-history")
+    if notification.notification_type == Notification.NotificationType.PAYMENT_CONFIRMATION and notification.related_payment:
+        retried = send_payment_confirmation(notification.related_payment)
+    elif notification.notification_type == Notification.NotificationType.FEE_REMINDER:
+        retried = send_fee_reminder(notification.student, force=True)
+    else:
+        messages.error(request, "This notification cannot be retried.")
+        return redirect("notification-history")
+    if retried.status == Notification.Status.SENT:
+        messages.success(request, "Notification retry sent successfully.")
+    else:
+        messages.error(request, "Notification retry failed again. The new failure was recorded.")
+    return redirect("notification-history")
 
 
 def build_report_context(request):

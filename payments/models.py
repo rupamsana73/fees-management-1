@@ -79,3 +79,33 @@ class FeePayment(models.Model):
     @property
     def formatted_amount(self):
         return f"₹{self.amount_paid:,.2f}"
+
+
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        PAYMENT_CONFIRMATION = "PAYMENT_CONFIRMATION", "Payment Confirmation"
+        FEE_REMINDER = "FEE_REMINDER", "Fee Reminder"
+
+    class Status(models.TextChoices):
+        SENT = "SENT", "Sent"
+        FAILED = "FAILED", "Failed"
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="notifications")
+    notification_type = models.CharField(max_length=30, choices=NotificationType.choices)
+    recipient_email = models.EmailField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    related_payment = models.ForeignKey(
+        FeePayment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    error_message = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        ordering = ("-sent_at", "-pk")
+
+    def __str__(self):
+        return f"{self.get_notification_type_display()} - {self.student.student_id} - {self.status}"
