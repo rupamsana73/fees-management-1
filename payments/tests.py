@@ -1,8 +1,10 @@
+import importlib
 from decimal import Decimal
 from datetime import timedelta
 from io import BytesIO
 from unittest.mock import patch
 
+from django.apps import apps as django_apps
 from django.core import mail
 from django.core.management import call_command
 from django.db import IntegrityError
@@ -545,3 +547,59 @@ class NotificationTests(TestCase):
         self.assertEqual(Notification.objects.filter(notification_type=Notification.NotificationType.FEE_REMINDER).count(), 2)
         self.assertEqual(Notification.objects.order_by("-pk").first().status, Notification.Status.SENT)
         self.assertTrue(AuditLog.objects.filter(action=AuditLog.Action.NOTIFICATION_RETRIED).exists())
+
+
+class TransactionIdPlaceholderMigrationTests(TestCase):
+    """The 0005 data migration blanks placeholder IDs and keeps real ones."""
+
+    migration_module = (
+        "payments.migrations.0005_feepayment_unique_nonblank_transaction_id"
+    )
+
+    def setUp(self):
+        self.student_user = User.objects.create_user(
+            username="migration-student",
+            password="StudentPass123!",
+            role=User.Role.STUDENT,
+        )
+        self.student = Student.objects.create(
+            user=self.student_user,
+            student_id="STU400",
+            name="Migration Student",
+            email="migration@example.com",
+            course="Mathematics",
+            total_fee=Decimal("900.00"),
+        )
+
+    def _create_payment(self, transaction_id):
+        return FeePayment.objects.create(
+            student=self.student,
+            amount_paid=Decimal("10.00"),
+            month="September 2026",
+            payment_method="Cash",
+            transaction_id=transaction_id,
+        )
+
+    def test_migration_blanks_placeholder_ids_and_preserves_real_ones(self):
+        placeholder_ids = ["none", "NONE", "None", "n/a", "Null", "nil", "   "]
+        for transaction_id in placeholder_ids:
+            self._create_payment(transaction_id)
+        real_ids = ["TXN-1001", "PAY-300", "UPI-2026-0099"]
+        for transaction_id in real_ids:
+            self._create_payment(transaction_id)
+        total_before = FeePayment.objects.count()
+
+        module = importlib.import_module(self.migration_module)
+        module.clear_blank_transaction_ids(django_apps, None)
+
+        self.assertEqual(FeePayment.objects.count(), total_before)
+        for transaction_id in real_ids:
+            self.assertEqual(
+                FeePayment.objects.filter(transaction_id=transaction_id).count(), 1
+            )
+        self.assertEqual(
+            FeePayment.objects.exclude(transaction_id="").count(), len(real_ids)
+        )
+        self.assertEqual(
+            FeePayment.objects.filter(transaction_id="").count(), len(placeholder_ids)
+        )

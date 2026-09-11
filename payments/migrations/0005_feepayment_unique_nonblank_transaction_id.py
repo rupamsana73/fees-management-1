@@ -2,6 +2,34 @@
 
 from django.db import migrations, models
 
+# Textual placeholders that mean "no transaction ID". FeePayment stores an
+# absent transaction ID as an empty string (``transaction_id = ""``); any
+# value in this set is therefore treated as blank rather than as a real
+# reference. Every other value is a legitimate transaction ID and is kept.
+PLACEHOLDER_TRANSACTION_IDS = ("none", "null", "nil", "n/a")
+
+# A value made up only of whitespace also carries no transaction ID.
+WHITESPACE_ONLY_TRANSACTION_ID = r"^\s+$"
+
+
+def clear_blank_transaction_ids(apps, schema_editor):
+    """Normalize placeholder transaction IDs to the project's blank value.
+
+    A real transaction ID is unique, so repeated copies of a placeholder
+    (for example four rows all holding "none") cannot be genuine references.
+    Such placeholders - and whitespace-only values - are rewritten to the
+    empty string, which the conditional unique constraint ignores. Rows that
+    hold an actual reference are left untouched and no payment is deleted.
+    """
+    FeePayment = apps.get_model("payments", "FeePayment")
+    for placeholder in PLACEHOLDER_TRANSACTION_IDS:
+        FeePayment.objects.filter(transaction_id__iexact=placeholder).update(
+            transaction_id=""
+        )
+    FeePayment.objects.filter(
+        transaction_id__regex=WHITESPACE_ONLY_TRANSACTION_ID
+    ).update(transaction_id="")
+
 
 class Migration(migrations.Migration):
 
@@ -10,6 +38,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(
+            clear_blank_transaction_ids,
+            migrations.RunPython.noop,
+        ),
         migrations.AddConstraint(
             model_name="feepayment",
             constraint=models.UniqueConstraint(
